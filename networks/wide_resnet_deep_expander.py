@@ -27,9 +27,10 @@ class ExpanderConv2d(nn.Module):
         self.outPad = 0
         self.conDil = inDil
         self.conGroups = groups
-        #self.weight = conv_initm.weight
-        self.fpWeight = torch.nn.Parameter(data=torch.Tensor(outdim, indim, kernel_size, kernel_size), requires_grad=True)
-        nn.init.kaiming_normal_(self.fpWeight.data,mode='fan_out')
+        #self.weight = 5
+        self.bias = True
+        self.weight = torch.nn.Parameter(data=torch.Tensor(outdim, indim, kernel_size, kernel_size), requires_grad=True)
+        nn.init.kaiming_normal_(self.weight.data,mode='fan_out')
 
         self.mask = torch.zeros(outdim, (indim),1,1)
 
@@ -49,7 +50,7 @@ class ExpanderConv2d(nn.Module):
         self.mask.requires_grad = False
 
     def forward(self, dataInput):
-        extendWeights = self.fpWeight.clone()
+        extendWeights = self.weight.clone()
         extendWeights.mul_(self.mask.data)
         return torch.nn.functional.conv2d(dataInput, extendWeights, bias=None,
                                           stride=self.conStride, padding=self.conPad,
@@ -60,7 +61,7 @@ def conv_init(m):
     if classname.find('Conv') != -1:
         init.xavier_uniform_(m.weight, gain=np.sqrt(2))
         #init.xavier_uniform_(gain=np.sqrt(2))
-        init.constant_(m.bias, 0)
+        #init.constant_(m.bias, 0)
     elif classname.find('BatchNorm') != -1:
         init.constant_(m.weight, 1)
         init.constant_(m.bias, 0)

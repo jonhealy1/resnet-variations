@@ -155,7 +155,7 @@ def train(epoch):
     print('\n=> Training Epoch #%d, LR=%.4f' %(epoch, cf.learning_rate(args.lr, epoch)))
     for batch_idx, (inputs, targets) in enumerate(trainloader):
         #if use_cuda:
-        inputs, targets = inputs.cuda(), targets.cuda() # GPU settings
+        #inputs, targets = inputs.cuda(), targets.cuda() # GPU settings
         optimizer.zero_grad()
         inputs, targets = Variable(inputs), Variable(targets)
         outputs = net(inputs)               # Forward Propagation
