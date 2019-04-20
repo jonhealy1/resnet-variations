@@ -70,6 +70,9 @@ def getNetwork(args):
     if (args.net_type == 'lenet'):
         net = LeNet(num_classes)
         file_name = 'lenet'
+    elif (args.net_type == 'wide-resnet-deep-expander'):
+        net = Wide_ResNet_Deep_Expander(args.depth, args.widen_factor, args.dropout, num_classes)
+        file_name = 'wide-resnet-deep-expander'+str(args.depth)+'x'+str(args.widen_factor)
     elif (args.net_type == 'vggnet'):
         net = VGG(args.depth, num_classes)
         file_name = 'vgg-'+str(args.depth)
