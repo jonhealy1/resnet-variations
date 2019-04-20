@@ -3,3 +3,4 @@ from .vggnet import *
 from .resnet import *
 from .wide_resnet import *
 from .wide_resnet_deep_expander import *
+from .pyramid_resnet import *

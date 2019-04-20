@@ -79,6 +79,9 @@ def getNetwork(args):
     elif (args.net_type == 'resnet'):
         net = ResNet(args.depth, num_classes)
         file_name = 'resnet-'+str(args.depth)
+    elif (args.net_type == 'pyramid-resnet'):
+        net = Pyramid_ResNet(args.depth, num_classes)
+        file_name = 'pyramid-resnet'+str(args.depth)
     elif (args.net_type == 'wide-resnet'):
         net = Wide_ResNet(args.depth, args.widen_factor, args.dropout, num_classes)
         file_name = 'wide-resnet-'+str(args.depth)+'x'+str(args.widen_factor)
