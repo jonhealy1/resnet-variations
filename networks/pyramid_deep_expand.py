@@ -1,4 +1,6 @@
 # https://github.com/dyhan0920/PyramidNet-PyTorch/blob/master/PyramidNet.py
+# https://github.com/drimpossible/Deep-Expander-Networks/blob/master/code/models/densenetexpander_cifar.py
+
 
 import torch
 import torch.nn as nn
@@ -11,6 +13,51 @@ import numpy as np
 
 def conv3x3(in_planes, out_planes, stride=1):
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=False)
+
+def conv3x3_expand(in_planes, out_planes, expandsize, stride=1):
+    "3x3 convolution with padding"
+    return ExpanderConv2d(in_planes, out_planes, kernel_size=3, stride=stride,
+                     padding=1, expandSize=(in_planes//expandsize))
+
+class ExpanderConv2d(nn.Module):
+    def __init__(self, indim, outdim, kernel_size, expandSize,
+                 stride=1, padding=0, inDil=1, groups=1, mode='random'):
+
+        super(ExpanderConv2d, self).__init__()
+        # Initialize all parameters that the convolution function needs to know
+        self.conStride = stride
+        self.conPad = padding
+        self.outPad = 0
+        self.conDil = inDil
+        self.conGroups = groups
+        #self.weight = 5
+        self.bias = True
+        self.weight = torch.nn.Parameter(data=torch.Tensor(outdim, indim, kernel_size, kernel_size), requires_grad=True)
+        nn.init.kaiming_normal_(self.weight.data,mode='fan_out')
+
+        self.mask = torch.zeros(outdim, (indim),1,1)
+
+        if indim > outdim:
+            for i in range(outdim):
+                x = torch.randperm(indim)
+                for j in range(expandSize):
+                    self.mask[i][x[j]][0][0] = 1
+        else:
+            for i in range(indim):
+                x = torch.randperm(outdim)
+                for j in range(expandSize):
+                    self.mask[x[j]][i][0][0] = 1
+
+        self.mask = self.mask.repeat(1, 1, kernel_size, kernel_size)
+        # self.mask =  nn.Parameter(self.mask.cuda())
+        self.mask.requires_grad = False
+
+    def forward(self, dataInput):
+        extendWeights = self.weight.clone()
+        extendWeights.mul_(self.mask.data)
+        return torch.nn.functional.conv2d(dataInput, extendWeights, bias=None,
+                                          stride=self.conStride, padding=self.conPad,
+                                          dilation=self.conDil, groups=self.conGroups)
 
 def conv_init(m):
     classname = m.__class__.__name__
@@ -38,9 +85,9 @@ class BasicBlock(nn.Module):
         super(BasicBlock, self).__init__()
         
         self.bn1 = nn.BatchNorm2d(inplanes)
-        self.conv1 = conv3x3(inplanes, planes, stride)        
+        self.conv1 = conv3x3_expand(inplanes, planes, stride)        
         self.bn2 = nn.BatchNorm2d(planes)
-        self.conv2 = conv3x3(planes, planes)
+        self.conv2 = conv3x3_expand(planes, planes)
         self.bn3 = nn.BatchNorm2d(planes)
         
         self.relu = nn.ReLU(inplace=True)
@@ -81,15 +128,16 @@ class BasicBlock(nn.Module):
 class Bottleneck(nn.Module):
     outchannel_ratio = 4
 
-    def __init__(self, in_planes, planes, stride=1, downsample=None):
+    def __init__(self, in_planes, planes, stride=1, downsample=None, expandsize=2):
         super(Bottleneck, self).__init__()
         self.bn1 = nn.BatchNorm2d(in_planes)
-        self.conv1 = nn.Conv2d(in_planes, planes, kernel_size=1, bias=False)
+        self.conv1 = ExpanderConv2d(in_planes, planes, kernel_size=1, expandSize=((planes)//expandsize))
         self.bn2 = nn.BatchNorm2d(planes)
-        self.conv2 = nn.Conv2d(planes, (planes*1), kernel_size=3, stride=stride,
-                               padding=1, bias=False)
+        self.conv2 = ExpanderConv2d(planes, (planes*1), kernel_size=3, stride=stride,
+                               padding=1, expandSize=((planes)//expandsize))
         self.bn3 = nn.BatchNorm2d((planes*1))
-        self.conv3 = nn.Conv2d((planes*1), planes * Bottleneck.outchannel_ratio, kernel_size=1, bias=False)
+        self.conv3 = ExpanderConv2d((planes*1), planes * Bottleneck.outchannel_ratio, kernel_size=1, 
+                                expandSize=((planes*1)//expandsize))
         self.bn4 = nn.BatchNorm2d(planes * Bottleneck.outchannel_ratio)
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
@@ -130,7 +178,7 @@ class Bottleneck(nn.Module):
         return out
 
 class Pyramid_ResNet(nn.Module):
-    def __init__(self, depth, num_classes, bottleneck=False, alpha=48):
+    def __init__(self, depth, num_classes, bottleneck=False, alpha=48, expandsize=2):
         
         super(Pyramid_ResNet, self).__init__()
         
@@ -148,7 +196,7 @@ class Pyramid_ResNet(nn.Module):
         self.addrate = alpha / (3*n*1.0)
 
         self.input_featuremap_dim = self.inplanes
-        self.conv1 = nn.Conv2d(3, self.input_featuremap_dim, kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv1 = ExpanderConv2d(3, self.input_featuremap_dim, kernel_size=3, stride=1, padding=1, expandSize=(3//expandSize))
         self.bn1 = nn.BatchNorm2d(self.input_featuremap_dim)
 
         self.featuremap_dim = self.input_featuremap_dim 
