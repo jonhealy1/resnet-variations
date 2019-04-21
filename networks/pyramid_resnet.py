@@ -130,7 +130,7 @@ class Bottleneck(nn.Module):
         return out
 
 class Pyramid_ResNet(nn.Module):
-    def __init__(self, depth, num_classes, bottleneck=False, alpha=1):
+    def __init__(self, depth, num_classes, bottleneck=False, alpha=48):
         
         super(Pyramid_ResNet, self).__init__()
         
