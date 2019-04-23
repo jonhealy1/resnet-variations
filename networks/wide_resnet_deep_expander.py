@@ -46,7 +46,7 @@ class ExpanderConv2d(nn.Module):
                     self.mask[x[j]][i][0][0] = 1
 
         self.mask = self.mask.repeat(1, 1, kernel_size, kernel_size)
-        # self.mask =  nn.Parameter(self.mask.cuda())
+        self.mask =  nn.Parameter(self.mask.cuda())
         self.mask.requires_grad = False
 
     def forward(self, dataInput):
@@ -67,7 +67,7 @@ def conv_init(m):
         init.constant_(m.bias, 0)
 
 class wide_basic(nn.Module):
-    def __init__(self, in_planes, planes, dropout_rate, stride=1, expandsize=2):
+    def __init__(self, in_planes, planes, dropout_rate, stride=1, expandsize=8):
         super(wide_basic, self).__init__()
         self.bn1 = nn.BatchNorm2d(in_planes)
         self.conv1 = conv3x3_expand(in_planes, planes,

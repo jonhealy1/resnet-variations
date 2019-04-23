@@ -49,7 +49,7 @@ class ExpanderConv2d(nn.Module):
                     self.mask[x[j]][i][0][0] = 1
 
         self.mask = self.mask.repeat(1, 1, kernel_size, kernel_size)
-        # self.mask =  nn.Parameter(self.mask.cuda())
+        self.mask =  nn.Parameter(self.mask.cuda())
         self.mask.requires_grad = False
 
     def forward(self, dataInput):
@@ -77,51 +77,6 @@ def cfg(depth):
     }
 
     return cf_dict[str(depth)]
-
-class BasicBlock(nn.Module):
-    outchannel_ratio = 1
-
-    def __init__(self, inplanes, planes, stride=1, downsample=None):
-        super(BasicBlock, self).__init__()
-        
-        self.bn1 = nn.BatchNorm2d(inplanes)
-        self.conv1 = conv3x3_expand(inplanes, planes, stride)        
-        self.bn2 = nn.BatchNorm2d(planes)
-        self.conv2 = conv3x3_expand(planes, planes)
-        self.bn3 = nn.BatchNorm2d(planes)
-        
-        self.relu = nn.ReLU(inplace=True)
-
-        self.downsample = downsample
-        self.stride = stride
-
-    def forward(self, x):
-
-        out = self.bn1(x)
-        out = self.conv1(out)        
-        out = self.bn2(out)
-        out = self.relu(out)
-        out = self.conv2(out)
-        out = self.bn3(out)
-
-        if self.downsample is not None:
-            shortcut = self.downsample(x)
-            featuremap_size = shortcut.size()[2:4]
-        else:
-            shortcut = x
-            featuremap_size = out.size()[2:4]
-
-        batch_size = out.size()[0]
-        residual_channel = out.size()[1]
-        shortcut_channel = shortcut.size()[1]
-      
-        if residual_channel != shortcut_channel:
-            padding = torch.autograd.Variable(torch.cuda.FloatTensor(batch_size, residual_channel - shortcut_channel, featuremap_size[0], featuremap_size[1]).fill_(0)) 
-            out += torch.cat((shortcut, padding), 1)
-        else:
-            out += shortcut 
-
-        return out
 
 # Be Here Now 
 
@@ -177,10 +132,10 @@ class Bottleneck(nn.Module):
 
         return out
 
-class Pyramid_ResNet(nn.Module):
-    def __init__(self, depth, num_classes, bottleneck=False, alpha=48, expandsize=2):
+class Pyramid_Deep_Expand(nn.Module):
+    def __init__(self, depth, num_classes, bottleneck=True, alpha=48, expandsize=2):
         
-        super(Pyramid_ResNet, self).__init__()
+        super(Pyramid_Deep_Expand, self).__init__()
         
         self.inplanes = 16
 
@@ -191,12 +146,12 @@ class Pyramid_ResNet(nn.Module):
             block = Bottleneck
         else:
             n = int((depth - 2) / 6)
-            block = BasicBlock
+            # block = Bottleneck
 
         self.addrate = alpha / (3*n*1.0)
 
         self.input_featuremap_dim = self.inplanes
-        self.conv1 = ExpanderConv2d(3, self.input_featuremap_dim, kernel_size=3, stride=1, padding=1, expandSize=(3//expandSize))
+        self.conv1 = ExpanderConv2d(3, self.input_featuremap_dim, kernel_size=3, stride=1, padding=1, expandSize=(3//expandsize))
         self.bn1 = nn.BatchNorm2d(self.input_featuremap_dim)
 
         self.featuremap_dim = self.input_featuremap_dim 
@@ -251,6 +206,6 @@ class Pyramid_ResNet(nn.Module):
         return x
 
 if __name__ == '__main__':
-    net=Pyramid_ResNet(50, 10)
+    net=Pyramid_Deep_Expand(50, 10)
     y = net(Variable(torch.randn(1,3,32,32)))
     print(y.size())
